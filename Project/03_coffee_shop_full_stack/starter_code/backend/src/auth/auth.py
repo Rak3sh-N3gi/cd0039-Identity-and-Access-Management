@@ -1,4 +1,5 @@
 import json
+from os import abort
 from flask import request, _request_ctx_stack
 from functools import wraps
 from jose import jwt
@@ -8,7 +9,7 @@ from urllib.request import urlopen
 # AUTH0_DOMAIN = 'udacity-fsnd.auth0.com'
 AUTH0_DOMAIN = 'dev-7pu1qwqr0730cbbq.us.auth0.com'
 ALGORITHMS = ['RS256']
-API_AUDIENCE = 'dev'
+API_AUDIENCE = 'header'
 
 ## AuthError Exception
 '''
@@ -91,15 +92,15 @@ def check_permissions(permission, payload):
 def verify_decode_jwt(token):
     jsonurl = urlopen(f'https://{AUTH0_DOMAIN}/.well-known/jwks.json')
     jwks = json.loads(jsonurl.read())
-    unverified_header = jwt.get_unverified_header(token)
+    unverifiedHeader = jwt.get_unverified_header(token)
     rsa_key = {}
-    if 'kid' not in unverified_header:
+    if 'kid' not in unverifiedHeader:
         raise AuthError({
             'code': 'invalid_header',
             'description': 'Authorization malformed.'
         }, 401)
     for key in jwks['keys']:
-        if key['kid'] == unverified_header['kid']:
+        if key['kid'] == unverifiedHeader['kid']:
             rsa_key = {
                 'kty': key['kty'],
                 'kid': key['kid'],
@@ -118,13 +119,13 @@ def verify_decode_jwt(token):
             rsa_key,
             algorithms=ALGORITHMS,
             audience=API_AUDIENCE,
-            issuer=f'https://{AUTH0_DOMAIN}/'
+            issuer='https://' + AUTH0_DOMAIN + '/'
         )
         return payload
     except jwt.ExpiredSignatureError:
         raise AuthError({
             'code': 'token_expired',
-            'description': 'Token expired.'
+            'description': 'Token is expired.'
         }, 401)
     except jwt.JWTClaimsError:
         raise AuthError({
@@ -136,8 +137,6 @@ def verify_decode_jwt(token):
             'code': 'invalid_header',
             'description': 'Unable to parse authentication token.'
         }, 400)
-    
-    # raise Exception('Not Implemented')
 
 '''
 @TODO implement @requires_auth(permission) decorator method
@@ -155,6 +154,13 @@ def requires_auth(permission=''):
         def wrapper(*args, **kwargs):
             token = get_token_auth_header()
             payload = verify_decode_jwt(token)
+            # try:
+            #     payload = verify_decode_jwt(token)
+            # except:
+            #     raise AuthError({
+            #         'code': 'invalid_token',
+            #         'description': 'Invalid token.'
+            #     }, 401)
             check_permissions(permission, payload)
             return f(payload, *args, **kwargs)
 
